@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.venv/
+.env
+.context_memory.json
+.context_memory.overlay.json
+.context_urls.json
+.session_history.jsonl
+.prompt_history
+knowledge/
