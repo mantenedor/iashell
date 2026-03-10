@@ -62,52 +62,6 @@ show_help() {
     echo ""
 }
 
-# Função para criar arquivo .env.example
-create_env_example() {
-    cat > "$INSTALL_DIR/.env.example" << 'EOF'
-# OpenAI API Key - Configure abaixo com sua chave
-# Obtenha em: https://platform.openai.com/api-keys
-OPENAI_API_KEY=sua-chave-aqui
-
-# Diretórios base (geralmente não precisa alterar)
-BASE_DIR=$HOME/iashell/base
-TMP_DIR=$HOME/iashell/base/tmp
-TMP_RAW_DIR=$HOME/iashell/base/tmp/.raw
-KNOWLEDGE_DIR=$HOME/iashell/base/knowledge
-KNOWLEDGE_RAW_DIR=$HOME/iashell/base/knowledge/.raw
-PARSED_DIR=$HOME/iashell/base/parsed
-DOCS_INDEX_FILE=$HOME/iashell/base/document_catalog.json
-CHUNKS_FILE=$HOME/iashell/base/chunks.jsonl
-BASE_MEMORY_FILE=$HOME/iashell/base/profile/base_memory.json
-OVERLAY_MEMORY_FILE=$HOME/iashell/base/profile/overlay_memory.json
-HISTORY_FILE=$HOME/iashell/base/profile/history.jsonl
-PROMPT_HISTORY_FILE=$HOME/iashell/base/profile/.prompt_history
-EOF
-}
-
-# Função para criar arquivo .env padrão
-create_default_env() {
-    cat > "$INSTALL_DIR/.env" << 'EOF'
-# OpenAI API Key - Configure abaixo com sua chave
-# Obtenha em: https://platform.openai.com/api-keys
-OPENAI_API_KEY=sua-chave-aqui
-
-# Diretórios base (geralmente não precisa alterar)
-BASE_DIR=$HOME/iashell/base
-TMP_DIR=$HOME/iashell/base/tmp
-TMP_RAW_DIR=$HOME/iashell/base/tmp/.raw
-KNOWLEDGE_DIR=$HOME/iashell/base/knowledge
-KNOWLEDGE_RAW_DIR=$HOME/iashell/base/knowledge/.raw
-PARSED_DIR=$HOME/iashell/base/parsed
-DOCS_INDEX_FILE=$HOME/iashell/base/document_catalog.json
-CHUNKS_FILE=$HOME/iashell/base/chunks.jsonl
-BASE_MEMORY_FILE=$HOME/iashell/base/profile/base_memory.json
-OVERLAY_MEMORY_FILE=$HOME/iashell/base/profile/overlay_memory.json
-HISTORY_FILE=$HOME/iashell/base/profile/history.jsonl
-PROMPT_HISTORY_FILE=$HOME/iashell/base/profile/.prompt_history
-EOF
-}
-
 # Função para instalar pip automaticamente
 install_pip() {
     echo -e "  ⚠️  Pip3 não encontrado. Tentando instalar automaticamente..."
@@ -233,54 +187,67 @@ install() {
     $PIP_CMD install -r requirements.txt
     echo -e "  ✅ Dependências instaladas"
 
-    # 4. Criar estrutura de diretórios base
+    # 4. Criar estrutura de diretórios
     echo -e "${BLUE}[4/8]${NC} Criando estrutura de diretórios..."
-    mkdir -p base/profile
-    mkdir -p base/tmp/.raw
-    mkdir -p base/knowledge/.raw
-    mkdir -p base/parsed
-    echo '[]' > base/document_catalog.json
-    touch base/chunks.jsonl
-    echo -e "  ✅ Estrutura base criada"
+    mkdir -p "$INSTALL_DIR/conf"
+    mkdir -p "$INSTALL_DIR/base/profile"
+    mkdir -p "$INSTALL_DIR/base/tmp/.raw"
+    mkdir -p "$INSTALL_DIR/base/knowledge/.raw"
+    mkdir -p "$INSTALL_DIR/base/parsed"
+    echo '[]' > "$INSTALL_DIR/base/document_catalog.json"
+    touch "$INSTALL_DIR/base/chunks.jsonl"
+    echo -e "  ✅ Estrutura criada"
 
     # 5. Configurar permissões
     echo -e "${BLUE}[5/8]${NC} Ajustando permissões..."
-    find base -type d -exec chmod 755 {} \;
-    find base -type f -exec chmod 644 {} \;
-    chmod 755 *.py *.sh
-    echo -e "  ✅ Permissões configuradas (755/644)"
+    find "$INSTALL_DIR/base" -type d -exec chmod 755 {} \;
+    find "$INSTALL_DIR/base" -type f -exec chmod 644 {} \;
+    chmod -R 755 "$INSTALL_DIR"/*.py "$INSTALL_DIR"/*.sh 2>/dev/null || true
+    echo -e "  ✅ Permissões configuradas"
 
-    # 6. Criar arquivo .env.example
-    echo -e "${BLUE}[6/8]${NC} Criando arquivo de exemplo..."
-    if [ ! -f ".env.example" ]; then
-        create_env_example
-        echo -e "  ✅ Arquivo .env.example criado"
+    # 6. Criar .env a partir do exemplo
+    echo -e "${BLUE}[6/8]${NC} Configurando ambiente..."
+    
+    if [ ! -f "$INSTALL_DIR/conf/.env" ]; then
+        if [ -f "$INSTALL_DIR/.env.example" ]; then
+            cp "$INSTALL_DIR/.env.example" "$INSTALL_DIR/conf/.env"
+            echo -e "  ✅ Arquivo conf/.env criado a partir do template"
+        else
+            # Criar .env mínimo
+            cat > "$INSTALL_DIR/conf/.env" << EOF
+# OpenAI API Key - Configure abaixo
+OPENAI_API_KEY=sua-chave-aqui
+
+# Diretórios base
+BASE_DIR=\$HOME/iashell/base
+TMP_DIR=\$HOME/iashell/base/tmp
+TMP_RAW_DIR=\$HOME/iashell/base/tmp/.raw
+KNOWLEDGE_DIR=\$HOME/iashell/base/knowledge
+KNOWLEDGE_RAW_DIR=\$HOME/iashell/base/knowledge/.raw
+PARSED_DIR=\$HOME/iashell/base/parsed
+DOCS_INDEX_FILE=\$HOME/iashell/base/document_catalog.json
+CHUNKS_FILE=\$HOME/iashell/base/chunks.jsonl
+BASE_MEMORY_FILE=\$HOME/iashell/base/profile/base_memory.json
+OVERLAY_MEMORY_FILE=\$HOME/iashell/base/profile/overlay_memory.json
+HISTORY_FILE=\$HOME/iashell/base/profile/history.jsonl
+PROMPT_HISTORY_FILE=\$HOME/iashell/base/profile/.prompt_history
+EOF
+            echo -e "  ✅ Arquivo conf/.env criado com valores padrão"
+        fi
+        echo -e "  ⚠️  Edite conf/.env para adicionar sua OPENAI_API_KEY"
     else
-        echo -e "  ✅ Arquivo .env.example já existe"
+        echo -e "  ✅ Arquivo conf/.env já existe"
     fi
 
-    # 7. Configurar arquivo .env
-    echo -e "${BLUE}[7/8]${NC} Configurando ambiente local..."
+    # 7. Configurar alias (CORRIGIDO)
+    echo -e "${BLUE}[7/8]${NC} Configurando alias 'ia'..."
     
-    if [ ! -f ".env" ]; then
-        create_default_env
-        echo -e "  ✅ Arquivo .env criado (edite para adicionar sua chave)"
-    else
-        echo -e "  ✅ Arquivo .env já existe"
-    fi
-
-    # 8. Configurar alias (CORRIGIDO)
-    echo -e "${BLUE}[8/8]${NC} Configurando alias 'ia'..."
+    # Remove aliases antigos
+    sed -i '/alias ia=/d' "$HOME/.bashrc" 2>/dev/null || true
+    sed -i '/alias ia=/d' "$HOME/.zshrc" 2>/dev/null || true
+    sed -i '/alias ia=/d' "$HOME/.bash_profile" 2>/dev/null || true
     
-    # Remove alias antigo se existir (qualquer caminho)
-    sed -i '/alias ia=.*iashell\/run-prompt.sh/d' "$HOME/.bashrc" 2>/dev/null || true
-    sed -i '/alias ia=.*iashell\/run-prompt.sh/d' "$HOME/.zshrc" 2>/dev/null || true
-    sed -i '/alias ia=.*iashell\/run-prompt.sh/d' "$HOME/.bash_profile" 2>/dev/null || true
-    
-    # Adiciona novo alias
-    ALIAS_COMMAND="alias ia='$INSTALL_DIR/run-prompt.sh'"
-    
-    # Verifica qual shell está sendo usado
+    # Detecta shell config
     SHELL_CONFIG="$HOME/.bashrc"
     if [ -n "$ZSH_VERSION" ]; then
         SHELL_CONFIG="$HOME/.zshrc"
@@ -288,9 +255,21 @@ install() {
         SHELL_CONFIG="$HOME/.bash_profile"
     fi
     
-    echo "$ALIAS_COMMAND" >> "$SHELL_CONFIG"
+    # Adiciona alias com bash explícito (para sistemas com restrições de execução)
+    echo "alias ia='bash $INSTALL_DIR/run-prompt.sh'" >> "$SHELL_CONFIG"
     echo -e "  ✅ Alias adicionado ao $SHELL_CONFIG"
-    echo -e "  📍 Caminho: $INSTALL_DIR/run-prompt.sh"
+    echo -e "  📍 Use: source $SHELL_CONFIG && ia"
+
+    # 8. Criar arquivo de teste
+    echo -e "${BLUE}[8/8]${NC} Criando arquivo de teste..."
+    cat > "$INSTALL_DIR/teste.sh" << 'EOF'
+#!/bin/bash
+echo "✅ Instalação funcionando corretamente!"
+echo "📂 Diretório de instalação: $HOME/iashell"
+echo "🔧 Para testar o assistente: ia"
+EOF
+    chmod +x "$INSTALL_DIR/teste.sh"
+    echo -e "  ✅ Arquivo de teste criado"
 
     # Concluído
     echo ""
@@ -300,28 +279,24 @@ install() {
     echo ""
     echo -e "${YELLOW}🔑 CONFIGURAÇÃO OBRIGATÓRIA:${NC}"
     echo -e "  ${RED}╔════════════════════════════════════════════════════════╗${NC}"
-    echo -e "  ${RED}║${NC}  Você precisa configurar sua chave da OpenAI         ${RED}║${NC}"
-    echo -e "  ${RED}║${NC}  para que o assistente funcione corretamente.       ${RED}║${NC}"
+    echo -e "  ${RED}║${NC}  Edite o arquivo de configuração:                    ${RED}║${NC}"
+    echo -e "  ${RED}║${NC}  vim $INSTALL_DIR/conf/.env                          ${RED}║${NC}"
+    echo -e "  ${RED}║${NC}  Adicione: OPENAI_API_KEY=sk-...                    ${RED}║${NC}"
     echo -e "  ${RED}╚════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "  📝 Execute: ${GREEN}vim $INSTALL_DIR/.env${NC}"
-    echo -e "  🔑 Adicione sua chave no formato: ${YELLOW}OPENAI_API_KEY=sk-...${NC}"
-    echo -e ""
-    echo -e "  💡 Um arquivo de exemplo está disponível em: ${BLUE}.env.example${NC}"
+    echo -e "${YELLOW}📝 TESTE RÁPIDO:${NC}"
+    echo -e "  1. ${GREEN}bash $INSTALL_DIR/teste.sh${NC}  # Testar permissões"
+    echo -e "  2. ${GREEN}source $SHELL_CONFIG${NC}        # Recarregar shell"
+    echo -e "  3. ${GREEN}ia${NC}                          # Executar assistente"
     echo ""
-    echo -e "${YELLOW}📝 PRÓXIMOS PASSOS:${NC}"
-    echo -e "  1. ${GREEN}source $SHELL_CONFIG${NC}  # Recarregue o shell"
-    echo -e "  2. ${GREEN}vim $INSTALL_DIR/.env${NC}  # Configure sua chave OpenAI"
-    echo -e "  3. ${GREEN}ia${NC}  # Execute o assistente"
-    echo ""
-    echo -e "${BLUE}📂 Arquivos instalados em: $INSTALL_DIR${NC}"
+    echo -e "${BLUE}📂 Instalado em: $INSTALL_DIR${NC}"
     echo -e "${BLUE}📚 Documentação: $INSTALL_DIR/README.md${NC}"
     echo ""
     echo -e "${YELLOW}⚠️  ATENÇÃO: O arquivo .env contém sua chave secreta e${NC}"
     echo -e "${YELLOW}   NÃO deve ser versionado no git (já está no .gitignore).${NC}"
 }
 
-# Função de destruição (CORRIGIDA)
+# Função de destruição
 destroy() {
     echo -e "${RED}╔════════════════════════════════════════════╗${NC}"
     echo -e "${RED}║      DESTRUINDO AMBIENTE...               ║${NC}"
@@ -339,13 +314,13 @@ destroy() {
         exit 0
     fi
 
-    # 1. Remover alias (CORRIGIDO - remove qualquer alias do ia)
+    # 1. Remover alias (CORRIGIDO)
     echo -e "${BLUE}[1/3]${NC} Removendo alias do shell..."
     
     for config in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile"; do
         if [ -f "$config" ]; then
             cp "$config" "$config.bak.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
-            sed -i '/alias ia=.*iashell\/run-prompt.sh/d' "$config" 2>/dev/null || true
+            sed -i '/alias ia=/d' "$config" 2>/dev/null || true
             echo -e "  ✅ Alias removido de $config"
         fi
     done
