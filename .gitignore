@@ -4,6 +4,9 @@ __pycache__/
 conf/.env
 
 base/
+knowledge/
+bkp/
+
 *.pdf
 *.xlsx
 *.csv
