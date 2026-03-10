@@ -1,10 +1,28 @@
 #!/usr/bin/env python3
 import json
+import os
 from pathlib import Path
 
-BASE_MEMORY_FILE = Path("/data/ia/.context_memory.json")
-OVERLAY_MEMORY_FILE = Path("/data/ia/.context_memory.overlay.json")
-HISTORY_FILE = Path("/data/ia/.session_history.jsonl")
+from dotenv import load_dotenv
+
+
+def load_local_env():
+    env_file = Path(os.environ.get("IA_ENV_FILE", "conf/.env"))
+    if env_file.exists():
+        load_dotenv(env_file)
+    return env_file
+
+
+ENV_FILE = load_local_env()
+
+BASE_MEMORY_FILE = os.environ["BASE_MEMORY_FILE"]
+OVERLAY_MEMORY_FILE = os.environ["OVERLAY_MEMORY_FILE"]
+HISTORY_FILE = os.environ["HISTORY_FILE"]
+CONTEXT_URLS_FILE = os.environ.get("CONTEXT_URLS_FILE", "")
+
+
+def ensure_parent(path_str: str):
+    Path(path_str).parent.mkdir(parents=True, exist_ok=True)
 
 
 def deep_merge(base, overlay):
@@ -37,13 +55,27 @@ def build_base_memory(nome_agente, diretrizes_texto, estilo_resposta):
 
 
 def save_base_memory(memory: dict):
+    ensure_parent(BASE_MEMORY_FILE)
     with open(BASE_MEMORY_FILE, "w", encoding="utf-8") as f:
         json.dump(memory, f, ensure_ascii=False, indent=2)
 
 
 def save_overlay_memory(memory: dict):
+    ensure_parent(OVERLAY_MEMORY_FILE)
     with open(OVERLAY_MEMORY_FILE, "w", encoding="utf-8") as f:
         json.dump(memory, f, ensure_ascii=False, indent=2)
+
+
+def load_context_urls():
+    if not CONTEXT_URLS_FILE:
+        return []
+
+    path = Path(CONTEXT_URLS_FILE)
+    if not path.exists():
+        return []
+
+    with open(path, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def ask_bootstrap_questions():
@@ -61,15 +93,14 @@ def ask_bootstrap_questions():
 
     save_base_memory(memory)
 
-    if not OVERLAY_MEMORY_FILE.exists():
+    if not Path(OVERLAY_MEMORY_FILE).exists():
         save_overlay_memory({})
 
-    print(f"\nMemória base criada em {BASE_MEMORY_FILE}\n")
     return load_memory()
 
 
 def load_base_memory():
-    if not BASE_MEMORY_FILE.exists():
+    if not Path(BASE_MEMORY_FILE).exists():
         return ask_bootstrap_questions()
 
     with open(BASE_MEMORY_FILE, "r", encoding="utf-8") as f:
@@ -77,7 +108,7 @@ def load_base_memory():
 
 
 def load_overlay_memory():
-    if not OVERLAY_MEMORY_FILE.exists():
+    if not Path(OVERLAY_MEMORY_FILE).exists():
         save_overlay_memory({})
         return {}
 
@@ -86,23 +117,25 @@ def load_overlay_memory():
 
 
 def load_memory():
-    base = load_base_memory()
-    overlay = load_overlay_memory()
-    return deep_merge(base, overlay)
+    return deep_merge(load_base_memory(), load_overlay_memory())
 
 
 def build_system_prompt(memory: dict) -> str:
+    context_urls = load_context_urls()
+
     return f"""Use a memória persistente local abaixo como fonte principal de contexto e comportamento.
 
 MEMÓRIA:
 {json.dumps(memory, ensure_ascii=False, indent=2)}
+
+URLS_DE_CONTEXTO:
+{json.dumps(context_urls, ensure_ascii=False, indent=2)}
 
 Interpretação da memória:
 - identidade.nome_agente = nome do agente
 - identidade.nome_usuario = nome do usuário, se existir
 - diretrizes.texto = diretrizes do agente
 - resposta.estilo = forma como o agente deve responder
-- controles.base_imutavel = a memória base nunca deve ser alterada
 
 Regras de execução:
 - Siga estritamente a memória carregada.
@@ -113,14 +146,12 @@ Regras de execução:
 - Se houver incerteza, declare claramente.
 - Para ações destrutivas, peça confirmação explícita.
 - A memória base original nunca deve ser alterada.
-- Ajustes incrementais, correções e resolução de inconsistências devem ir apenas para o arquivo overlay.
+- Ajustes incrementais e correções devem ir apenas para o arquivo overlay.
 """
 
 
 def append_history(user_text: str, assistant_text: str):
-    entry = {
-        "user": user_text,
-        "assistant": assistant_text
-    }
+    ensure_parent(HISTORY_FILE)
+    entry = {"user": user_text, "assistant": assistant_text}
     with open(HISTORY_FILE, "a", encoding="utf-8") as f:
         f.write(json.dumps(entry, ensure_ascii=False) + "\n")

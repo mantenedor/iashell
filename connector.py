@@ -1,5 +1,21 @@
+#!/usr/bin/env python3
 import os
+from pathlib import Path
+
+from dotenv import load_dotenv
 from openai import OpenAI
+
+
+def load_local_env():
+    env_file = Path(os.environ.get("IA_ENV_FILE", "conf/.env"))
+    if env_file.exists():
+        load_dotenv(env_file)
+
+
+load_local_env()
+
+if "OPENAI_API_KEY" not in os.environ:
+    raise RuntimeError("OPENAI_API_KEY ausente em conf/.env")
 
 client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 
