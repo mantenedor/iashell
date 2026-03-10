@@ -12,7 +12,7 @@ O agente:
 ---
 
 ## Arquitetura
-
+````
 WORKDIR/
 ├── conf/
 │   └── .env
@@ -37,8 +37,7 @@ WORKDIR/
 ├── setup.sh
 ├── .env.example
 └── requirements.txt
-
----
+````
 
 ## Dependências
 
