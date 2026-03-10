@@ -1,1080 +1,524 @@
+cat > /home/wagton.oliveira/iashell/README.md << 'EOF'
 # IA Local Assistente Técnico
 
-
-
-Assistente de linha de comando com **memória persistente**, **RAG local** e **execução de shell**, projetado para operar diretamente no terminal.
-
-
+Assistente de linha de comando com memória persistente, RAG local e execução de shell, projetado para operar diretamente no terminal.
 
 O agente:
-
 - mantém memória de contexto persistente
-
 - indexa documentos automaticamente
-
 - consulta documentação antes de responder
-
 - executa comandos locais sob confirmação
-
 - opera inteiramente via terminal
 
-
-
 ---
-
-
 
 ## Arquitetura
 
-
-
 WORKDIR/
-
 ├── conf/
-
 │   └── .env
-
 ├── base/
-
 │   ├── profile/
-
 │   │   ├── base_memory.json
-
 │   │   ├── overlay_memory.json
-
 │   │   ├── history.jsonl
-
 │   │   └── .prompt_history
-
 │   ├── tmp/
-
 │   │   └── .raw/
-
 │   ├── knowledge/
-
 │   │   └── .raw/
-
 │   ├── parsed/
-
 │   ├── document_catalog.json
-
 │   └── chunks.jsonl
-
 ├── prompt.py
-
 ├── memory.py
-
 ├── knowledge.py
-
 ├── connector.py
-
 ├── run-prompt.sh
-
+├── setup.sh
+├── .env.example
 └── requirements.txt
 
-
-
 ---
-
-
 
 ## Dependências
 
-
-
 ### Python 3.8+ (recomendado 3.10+)
-
-
 
 ### Pacotes necessários:
 
-
-
 # Core
-
 openai
-
 python-dotenv
 
-
-
 # PDF Processing
-
 pypdf2
-
 pdfplumber
 
-
-
 # HTML Processing
-
 beautifulsoup4
-
 html2text
-
 lxml
 
-
-
 # Spreadsheets
-
 openpyxl
 
-
-
 # Images
-
 pillow
 
-
-
 # Text Processing
-
 tiktoken
 
-
-
 # Utilities
-
 requests
-
-
 
 ### Instalação completa com pip:
 
-
-
 pip install openai python-dotenv pypdf2 pdfplumber beautifulsoup4 html2text lxml openpyxl pillow tiktoken requests
 
-
-
 ---
-
-
 
 ## Instalação
 
+### Método Rápido (Recomendado)
 
+curl -fsSL https://raw.githubusercontent.com/mantenedor/iashell/main/setup.sh | bash -s -- -i
 
-### 1. Criar diretório
+Este comando:
+- Instala tudo em ~/iashell (sem precisar de sudo)
+- Cria a estrutura de diretórios automaticamente
+- Instala todas as dependências Python
+- Configura o alias 'ia' no seu shell
+- Cria o arquivo conf/.env de configuração
 
+### Desinstalação
 
+# Remover o ambiente (mantém caches Python)
+curl -fsSL https://raw.githubusercontent.com/mantenedor/iashell/main/setup.sh | bash -s -- -d
 
-sudo mkdir -p /opt/ia/data
+# Remover completamente (inclui caches Python)
+curl -fsSL https://raw.githubusercontent.com/mantenedor/iashell/main/setup.sh | bash -s -- -d
+# Será solicitada a confirmação com a palavra "DESTRUIR"
 
-sudo chown $USER:$USER /opt/ia/data
+### Configuração da Chave OpenAI
 
-cd /opt/ia/data
+Após a instalação, configure sua chave da OpenAI:
 
+vim ~/iashell/conf/.env
 
+Adicione sua chave no formato:
+OPENAI_API_KEY=sk-...
 
-### 2. Clonar repositório
+Para obter uma chave: https://platform.openai.com/api-keys
 
+### Pré-requisitos
 
+- Python 3.8+ e pip
+- Git
+- Acesso à internet
 
-git clone https://github.com/mantenedor/iashell.git iashell
+### O que o script faz
 
-cd iashell
-
-
-
-### 3. Criar ambiente virtual (opcional, mas recomendado)
-
-
-
-python3 -m venv .venv
-
-source .venv/bin/activate
-
-
-
-### 4. Instalar dependências
-
-
-
-pip install -r requirements.txt
-
-
-
-### 5. Criar configuração
-
-
-
-mkdir -p conf
-
-cp .env.example conf/.env  # se existir, ou crie manualmente
-
-vim conf/.env
-
-
-
-Exemplo de .env:
-
-
-
-# OpenAI
-
-OPENAI_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-
-
-
-# Diretórios base
-
-BASE_DIR=/opt/ia/data/iashell/base
-
-
-
-# Diretórios temporários
-
-TMP_DIR=/opt/ia/data/iashell/base/tmp
-
-TMP_RAW_DIR=/opt/ia/data/iashell/base/tmp/.raw
-
-
-
-# Diretórios de conhecimento
-
-KNOWLEDGE_DIR=/opt/ia/data/iashell/base/knowledge
-
-KNOWLEDGE_RAW_DIR=/opt/ia/data/iashell/base/knowledge/.raw
-
-
-
-# Diretório de arquivos parseados
-
-PARSED_DIR=/opt/ia/data/iashell/base/parsed
-
-
-
-# Arquivos de índice
-
-DOCS_INDEX_FILE=/opt/ia/data/iashell/base/document_catalog.json
-
-CHUNKS_FILE=/opt/ia/data/iashell/base/chunks.jsonl
-
-
-
-# Arquivos de memória
-
-BASE_MEMORY_FILE=/opt/ia/data/iashell/base/profile/base_memory.json
-
-OVERLAY_MEMORY_FILE=/opt/ia/data/iashell/base/profile/overlay_memory.json
-
-HISTORY_FILE=/opt/ia/data/iashell/base/profile/history.jsonl
-
-PROMPT_HISTORY_FILE=/opt/ia/data/iashell/base/profile/.prompt_history
-
-
-
-### 6. Criar estrutura de diretórios com permissões adequadas
-
-
-
-# Criar estrutura
-
-mkdir -p base/profile
-
-mkdir -p base/tmp/.raw
-
-mkdir -p base/knowledge/.raw
-
-mkdir -p base/parsed
-
-
-
-# Criar arquivos de índice vazios
-
-echo '[]' > base/document_catalog.json
-
-touch base/chunks.jsonl
-
-
-
-# Ajustar permissões (usuário atual como dono)
-
-chmod 755 /opt/ia/data/iashell
-
-chmod 755 /opt/ia/data/iashell/base
-
-chmod 750 /opt/ia/data/iashell/base/profile
-
-chmod 750 /opt/ia/data/iashell/base/tmp
-
-chmod 750 /opt/ia/data/iashell/base/tmp/.raw
-
-chmod 750 /opt/ia/data/iashell/base/knowledge
-
-chmod 750 /opt/ia/data/iashell/base/knowledge/.raw
-
-chmod 750 /opt/ia/data/iashell/base/parsed
-
-chmod 640 /opt/ia/data/iashell/base/document_catalog.json
-
-chmod 640 /opt/ia/data/iashell/base/chunks.jsonl
-
-
-
-### 7. Criar alias global
-
-
-
-# Para usuário atual (recomendado)
-
-echo 'alias ia="/opt/ia/data/iashell/run-prompt.sh"' >> ~/.bashrc
-
-source ~/.bashrc
-
-
-
-# OU para todos os usuários (requer sudo)
-
-echo 'alias ia="/opt/ia/data/iashell/run-prompt.sh"' | sudo tee /etc/profile.d/ia.sh
-
-sudo chmod 644 /etc/profile.d/ia.sh
-
-
-
-### 8. Configurar memória inicial
-
-
-
-# A primeira execução criará a memória base interativamente
-
-ia
-
-
-
-Durante a primeira execução, você será perguntado:
-
-- Nome do agente
-
-- Diretrizes
-
-- Estilo de resposta
-
-
-
-Exemplo:
-
-Qual o meu nome? Hum
-
-Quais as minha diretrizes? Você é um especialista em EOW
-
-Como gostaria que eu respondesse? objetivamente
-
-
+1. Verifica os pré-requisitos (Python, pip, git)
+2. Clona o repositório para ~/iashell
+3. Instala dependências Python
+4. Cria estrutura de diretórios (base/, tmp/, knowledge/, etc.)
+5. Cria diretório conf/ e arquivo .env a partir do template
+6. Configura alias 'ia' no shell (detecta bash/zsh automaticamente)
+7. Ajusta permissões (755 para diretórios, 644 para arquivos)
 
 ---
-
-
 
 ## Execução
 
-
-
 Iniciar o assistente:
-
-
 
 ia
 
-
-
 Prompt de exemplo:
-
 IA pronta (!comando para shell, :add <arquivo> para indexar, :docs para listar documentos, :diagnose <doc_id> para diagnóstico, q ou quit para sair)
-
-
 
 > 
 
-
-
 ---
-
-
 
 ## Comandos do Prompt
 
+Comando: !<comando>
+Descrição: Executa comando shell
+Exemplo: !ls -la
 
+Comando: :add <caminho>
+Descrição: Indexa documento
+Exemplo: :add /tmp/manual.pdf
 
-| Comando | Descrição | Exemplo |
+Comando: :docs
+Descrição: Lista documentos indexados
+Exemplo: :docs
 
-|---------|-----------|---------|
+Comando: :diagnose <doc_id>
+Descrição: Diagnostica documento
+Exemplo: :diagnose manual-abc123
 
-| !<comando> | Executa comando shell | !ls -la |
-
-| :add <caminho> | Indexa documento | :add /tmp/manual.pdf |
-
-| :docs | Lista documentos indexados | :docs |
-
-| :diagnose <doc_id> | Diagnostica documento | :diagnose manual-abc123 |
-
-| q ou quit | Sai do assistente | q |
-
-
+Comando: q ou quit
+Descrição: Sai do assistente
+Exemplo: q
 
 ### Exemplos de uso:
 
-
-
 # Executar comando e analisar saída
-
 > !df -h
-
 --- saída do comando ---
-
 Filesystem      Size  Used Avail Use% Mounted on
-
 /dev/sda3        98G   45G   53G  46% /
-
 --- fim ---
-
-
 
 Pressione ENTER para enviar à IA ou Ctrl+C para cancelar:
 
-
-
 # Indexar documento
-
-> :add /opt/ia/data/iashell/base/knowledge/instalationguide.pdf
-
-Ingerindo /opt/ia/data/iashell/base/knowledge/instalationguide.pdf...
-
-Documento indexado: instalationguide-cda88194f2f6 (pdf)
-
+> :add ~/documentos/manual.pdf
+Ingerindo /home/usuario/documentos/manual.pdf...
+Documento indexado: manual-abc123 (pdf)
 Chunks gerados: 25
-
-Resumo: Este guia de instalação do EOW versão 2.1...
-
-
+Resumo: Manual de instalação versão 2.1...
 
 # Listar documentos
-
 > :docs
-
 Documentos disponíveis (1):
-
-- doc_id: instalationguide-cda88194f2f6
-
-  nome: instalationguide.pdf
-
+- doc_id: manual-abc123
+  nome: manual.pdf
   tipo: pdf
-
-  origem: knowledge
-
+  origem: manual
   tamanho_bytes: 4995295
-
   chunks: 25
-
-  resumo: Este guia de instalação do EOW...
-
-
+  resumo: Manual de instalação versão 2.1...
 
 # Diagnosticar documento
-
-> :diagnose instalationguide-cda88194f2f6
-
-
+> :diagnose manual-abc123
 
 # Perguntar sobre documento
-
 > do que se trata esse arquivo?
 
-
-
 ---
-
-
 
 ## Indexação automática
 
-
-
 Arquivos colocados nos diretórios monitorados são detectados automaticamente:
 
-
-
-- `base/tmp/` → origem `tmp` (arquivos temporários)
-
-- `base/knowledge/` → origem `knowledge` (base de conhecimento)
-
-
+- ~/iashell/base/tmp/ -> origem 'tmp' (arquivos temporários)
+- ~/iashell/base/knowledge/ -> origem 'knowledge' (base de conhecimento)
 
 A indexação é incremental:
-
-- arquivos novos → indexados
-
-- arquivos alterados → reindexados
-
-- arquivos iguais → ignorados
-
-
+- arquivos novos -> indexados
+- arquivos alterados -> reindexados
+- arquivos iguais -> ignorados
 
 Para adicionar arquivos manualmente:
-
-cp documento.pdf /opt/ia/data/iashell/base/knowledge/
-
+cp documento.pdf ~/iashell/base/knowledge/
 # O sistema detectará automaticamente na próxima iteração
 
-
-
 ---
-
-
 
 ## Formatos suportados
 
+Tipo: PDF
+Extensões: .pdf
+Processamento: Extração com pdfplumber (fallback PyPDF2)
 
+Tipo: HTML
+Extensões: .htm, .html
+Processamento: Parse com BeautifulSoup + conversão para Markdown
 
-| Tipo | Extensões | Processamento |
+Tipo: Texto
+Extensões: .txt, .md, .log, .json, .yaml, .yml, .ini, .cfg
+Processamento: Leitura direta
 
-|------|-----------|---------------|
+Tipo: CSV/TSV
+Extensões: .csv, .tsv
+Processamento: Parse com detecção de delimitador
 
-| PDF | .pdf | Extração com pdfplumber (fallback PyPDF2) |
+Tipo: Planilhas
+Extensões: .xlsx, .xlsm
+Processamento: Leitura com openpyxl
 
-| HTML | .htm, .html | Parse com BeautifulSoup + conversão para Markdown |
-
-| Texto | .txt, .md, .log, .json, .yaml, .yml, .ini, .cfg | Leitura direta |
-
-| CSV/TSV | .csv, .tsv | Parse com detecção de delimitador |
-
-| Planilhas | .xlsx, .xlsm | Leitura com openpyxl |
-
-| Imagens | .png, .jpg, .jpeg, .webp, .bmp, .gif | Extração de metadados + sidecar files |
-
-
+Tipo: Imagens
+Extensões: .png, .jpg, .jpeg, .webp, .bmp, .gif
+Processamento: Extração de metadados + sidecar files
 
 ---
-
-
 
 ## Funcionamento do RAG
 
-
-
-1. **Ingestão**: arquivo é copiado para `.raw/`
-
-2. **Parsing**: conteúdo é extraído conforme o tipo
-
-3. **Chunking**: texto é dividido em chunks de ~1800 tokens com sobreposição
-
-4. **Indexação**: chunks são salvos com metadados e keywords
-
-5. **Busca**: consultas buscam chunks relevantes por similaridade de termos
-
-6. **Contexto**: chunks relevantes são enviados ao modelo junto com a pergunta
-
-
+1. Ingestão: arquivo é copiado para .raw/
+2. Parsing: conteúdo é extraído conforme o tipo
+3. Chunking: texto é dividido em chunks de ~1800 tokens com sobreposição
+4. Indexação: chunks são salvos com metadados e keywords
+5. Busca: consultas buscam chunks relevantes por similaridade de termos
+6. Contexto: chunks relevantes são enviados ao modelo junto com a pergunta
 
 ---
-
-
 
 ## Diagnóstico
 
-
-
-O comando `:diagnose <doc_id>` fornece informações detalhadas:
-
-
+O comando ':diagnose <doc_id>' fornece informações detalhadas:
 
 ============================================================
-
-DIAGNÓSTICO DO DOCUMENTO: instalationguide-cda88194f2f6
-
+DIAGNÓSTICO DO DOCUMENTO: manual-abc123
 ============================================================
-
-
 
 📋 METADADOS:
-
-  Nome: instalationguide.pdf
-
+  Nome: manual.pdf
   Tipo: pdf
-
   Tamanho: 4995295 bytes
-
   Chunks: 25
-
   Status: parsed
+  Resumo: Manual de instalação versão 2.1...
 
-  Resumo: Este guia de instalação do EOW versão 2.1...
-
-
-
-📄 ARQUIVO RAW: /opt/ia/data/iashell/base/knowledge/.raw/instalationguide-cda88194f2f6.pdf
-
+📄 ARQUIVO RAW: /home/usuario/iashell/base/knowledge/.raw/manual-abc123.pdf
   Tamanho: 4995295 bytes
 
-
-
-📄 ARQUIVO PARSED: /opt/ia/data/iashell/base/parsed/instalationguide-cda88194f2f6.json
-
+📄 ARQUIVO PARSED: /home/usuario/iashell/base/parsed/manual-abc123.json
   Tamanho: 154320 bytes
-
   Páginas: 25
-
-  Página 1 (primeiras 200 chars): # Enterprise Open Workspace Installation Guide...
-
-
+  Página 1 (primeiras 200 chars): # Manual de Instalação...
 
 🔍 CHUNKS: 25 encontrados
-
   Chunks com conteúdo real: 25
 
-
-
 ---
-
-
 
 ## Memória Persistente
 
-
-
-Localização: `base/profile/`
-
-
+Localização: ~/iashell/base/profile/
 
 Arquivos:
-
-- `base_memory.json` → memória base imutável
-
-- `overlay_memory.json` → ajustes incrementais
-
-- `history.jsonl` → histórico de conversas
-
-- `.prompt_history` → histórico de comandos (readline)
-
-
+- base_memory.json -> memória base imutável
+- overlay_memory.json -> ajustes incrementais
+- history.jsonl -> histórico de conversas
+- .prompt_history -> histórico de comandos (readline)
 
 A memória pode ser editada manualmente para ajustar comportamento.
 
-
-
-Exemplo de `base_memory.json`:
-
+Exemplo de base_memory.json:
 {
-
   "identidade": {
-
     "nome_agente": "Hum"
-
   },
-
   "diretrizes": {
-
     "texto": "Você é um especialista na solução Enterprise Open Workspace (EOW)..."
-
   },
-
   "resposta": {
-
     "estilo": "objetivamente"
-
   },
-
   "controles": {
-
     "base_imutavel": true
-
   }
-
 }
 
-
-
 ---
-
-
 
 ## Segurança
 
-
-
-- Comandos shell **não são executados automaticamente**
-
+- Comandos shell não são executados automaticamente
 - A saída é mostrada antes de ser enviada ao modelo
-
 - Confirmação explícita necessária para cada comando
-
 - Documentos são armazenados localmente
-
-- API key da OpenAI armazenada apenas no `.env` (não versionado)
-
+- API key da OpenAI armazenada apenas no .env (não versionado)
 - Permissões restritivas nos diretórios (750/640)
-
-
 
 ### Permissões recomendadas:
 
-
-
 # Diretórios (acesso apenas para o dono e grupo)
-
-find /opt/ia/data/iashell/base -type d -exec chmod 750 {} \;
-
-
+find ~/iashell/base -type d -exec chmod 750 {} \;
 
 # Arquivos (leitura/escrita apenas para o dono)
-
-find /opt/ia/data/iashell/base -type f -exec chmod 640 {} \;
-
-
+find ~/iashell/base -type f -exec chmod 640 {} \;
 
 # Scripts executáveis
-
-chmod 750 /opt/ia/data/iashell/*.sh
-
-chmod 750 /opt/ia/data/iashell/*.py
-
-
+chmod 750 ~/iashell/*.sh
+chmod 750 ~/iashell/*.py
 
 ---
-
-
 
 ## Solução de Problemas
 
+### Erro: TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'
 
+Causa: Python < 3.10 não suporta sintaxe 'str | None'
 
-### Erro: `TypeError: unsupported operand type(s) for |: 'type' and 'NoneType'`
-
-
-
-**Causa**: Python < 3.10 não suporta sintaxe `str | None`
-
-
-
-**Solução**:
-
-sed -i '1i from typing import Optional' /opt/ia/data/iashell/prompt.py
-
-sed -i 's/str | None/Optional[str]/g' /opt/ia/data/iashell/prompt.py
-
-
+Solução:
+sed -i '1i from typing import Optional' ~/iashell/prompt.py
+sed -i 's/str | None/Optional[str]/g' ~/iashell/prompt.py
 
 ### PDF sem texto extraível
 
+Causa: PDF pode ser baseado em imagens ou protegido
 
-
-**Causa**: PDF pode ser baseado em imagens ou protegido
-
-
-
-**Solução**: Instalar pdfplumber para melhor extração
-
+Solução: Instalar pdfplumber para melhor extração
 pip install pdfplumber
-
-
 
 ### Erro de permissão
 
+Causa: Diretórios sem permissão de escrita
 
-
-**Causa**: Diretórios sem permissão de escrita
-
-
-
-**Solução**:
-
+Solução:
 # Verificar dono atual
-
-ls -la /opt/ia/data/iashell/base/
-
-
-
-# Ajustar dono (substitua $USER pelo seu usuário)
-
-sudo chown -R $USER:$USER /opt/ia/data/iashell/base
-
-
+ls -la ~/iashell/base/
 
 # Aplicar permissões corretas
-
-find /opt/ia/data/iashell/base -type d -exec chmod 750 {} \;
-
-find /opt/ia/data/iashell/base -type f -exec chmod 640 {} \;
-
-chmod 750 /opt/ia/data/iashell/base/tmp/.raw
-
-chmod 750 /opt/ia/data/iashell/base/knowledge/.raw
-
-
+find ~/iashell/base -type d -exec chmod 750 {} \;
+find ~/iashell/base -type f -exec chmod 640 {} \;
 
 ### Arquivo não aparece no catálogo
 
+Causa: Arquivo pode estar em diretório não monitorado
 
-
-**Causa**: Arquivo pode estar em diretório não monitorado
-
-
-
-**Solução**:
-
+Solução:
 # Mover para diretório correto
-
-mv /caminho/arquivo.pdf /opt/ia/data/iashell/base/knowledge/
-
-
+mv /caminho/arquivo.pdf ~/iashell/base/knowledge/
 
 # Forçar sincronização manual
+:add ~/iashell/base/knowledge/arquivo.pdf
 
-:add /opt/ia/data/iashell/base/knowledge/arquivo.pdf
+### Erro 401 - Invalid API Key
 
+Causa: Chave da OpenAI inválida ou expirada
 
+Solução:
+1. Acesse https://platform.openai.com/api-keys
+2. Gere uma nova chave
+3. Atualize em ~/iashell/conf/.env
 
 ---
-
-
 
 ## Manutenção
 
-
-
 ### Atualizar código
 
-
-
-cd /opt/ia/data/iashell
-
+cd ~/iashell
 git pull
-
 pip install -r requirements.txt --upgrade
-
-
 
 ### Backup
 
-
-
-cd /opt/ia/data
-
+cd ~
 tar czf ia-backup-$(date +%Y%m%d-%H%M%S).tar.gz iashell/base/
-
-
 
 ### Restaurar backup
 
-
-
-cd /opt/ia/data
-
+cd ~
 tar xzf ia-backup-20250310-153000.tar.gz
-
-
 
 ### Reset completo (mantendo configurações)
 
-
-
 # Backup primeiro!
-
-cd /opt/ia/data/iashell
-
+cd ~/iashell
 rm -rf base/*
-
 mkdir -p base/profile base/tmp/.raw base/knowledge/.raw base/parsed
-
 echo '[]' > base/document_catalog.json
-
 touch base/chunks.jsonl
-
 find base -type d -exec chmod 750 {} \;
-
 find base -type f -exec chmod 640 {} \;
-
-
 
 ### Remoção completa
 
-
-
 # Backup primeiro!
-
-rm -rf /opt/ia/data/iashell
-
-
+rm -rf ~/iashell
 
 # Remover alias (editar arquivo)
-
-vim ~/.bashrc  # ou /etc/profile.d/ia.sh
-
-
+vim ~/.bashrc
 
 ---
-
-
 
 ## Logs e Depuração
 
-
-
 ### Verificar logs de erro
 
-
-
 # Executar com debug
-
-python3 -m trace --trace /opt/ia/data/iashell/prompt.py 2>&1 | tee debug.log
-
-
-
-# Verificar últimos erros
-
-tail -f /var/log/syslog | grep ia
-
-
+python3 -m trace --trace ~/iashell/prompt.py 2>&1 | tee debug.log
 
 ### Verificar integridade dos dados
 
-
-
 # Listar documentos
-
 python3 -c "from knowledge import list_documents; print(list_documents())"
 
-
-
 # Verificar chunks
-
 python3 -c "from knowledge import load_all_chunks; print(len(load_all_chunks()))"
 
-
-
 ---
-
-
 
 ## Contribuição
 
-
-
 1. Fork o repositório
-
-2. Crie uma branch (`git checkout -b feature/nova-funcionalidade`)
-
-3. Commit suas mudanças (`git commit -am 'Adiciona nova funcionalidade'`)
-
-4. Push para a branch (`git push origin feature/nova-funcionalidade`)
-
+2. Crie uma branch (git checkout -b feature/nova-funcionalidade)
+3. Commit suas mudanças (git commit -am 'Adiciona nova funcionalidade')
+4. Push para a branch (git push origin feature/nova-funcionalidade)
 5. Abra um Pull Request
-
-
 
 ### Padrões de código
 
-
-
 - Seguir PEP 8
-
 - Adicionar docstrings para funções públicas
-
 - Atualizar README quando necessário
 
-- Adicionar testes quando possível
-
-
-
 ---
-
-
 
 ## Licença
 
-
-
-Este projeto está licenciado sob a licença MIT - veja o arquivo LICENSE para detalhes.
-
-
-
----
-
-
-
-## Autor
-
-
-
-Mantenedor - [@mantenedor](https://github.com/mantenedor)
-
-
-
----
-
-
-
-## Agradecimentos
-
-
-
-- OpenAI pela API
-
-- Comunidade open source pelas bibliotecas utilizadas
-
-- Contribuidores do projeto
-
-
-
----
-
-
-
-## Changelog
-
-
-
-### v1.0.0 (2024-03-10)
-
-- Suporte inicial a PDF, TXT, CSV, Excel, Imagens
-
-- RAG com chunks e busca por keywords
-
-- Memória persistente
-
-- Execução de comandos shell
-
-
-
-### v1.1.0 (2024-03-10)
-
-- Suporte a HTML com BeautifulSoup
-
-- Diagnóstico de documentos
-
-- Melhorias na extração de PDF com pdfplumber
-
-- Permissões corrigidas
-
-## Licença
-
-Este projeto está licenciado sob a **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**.
+Este projeto está licenciado sob a Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0).
 
 ### Você tem permissão para:
 
-- **Compartilhar** — copiar e redistribuir o material em qualquer suporte ou formato
-- **Adaptar** — remixar, transformar, e criar a partir do material
+- Compartilhar - copiar e redistribuir o material em qualquer suporte ou formato
+- Adaptar - remixar, transformar, e criar a partir do material
 
 ### Sob as seguintes condições:
 
-- **Atribuição** — Você deve dar o crédito apropriado, prover um link para a licença e indicar se mudanças foram feitas.
-- **Não Comercial** — Você não pode usar o material para fins comerciais.
+- Atribuição - Você deve dar o crédito apropriado, prover um link para a licença e indicar se mudanças foram feitas.
+- Não Comercial - Você não pode usar o material para fins comerciais.
 
 ### Restrições:
 
-- **Sem restrições adicionais** — Você não pode aplicar termos jurídicos ou medidas tecnológicas que restrinjam legalmente outros de fazerem algo que a licença permita.
+- Sem restrições adicionais - Você não pode aplicar termos jurídicos ou medidas tecnológicas que restrinjam legalmente outros de fazerem algo que a licença permita.
 
-📄 [Veja a licença completa](LICENSE) para mais detalhes.
+Veja o arquivo LICENSE para mais detalhes.
 
 ---
 
 **Resumo**: Você pode usar, modificar e compartilhar este código livremente, desde que não seja para fins comerciais e que dê os devidos créditos ao autor original.
 
+---
+
+## Autor
+
+Mantenedor - @mantenedor
 
 ---
 
+## Agradecimentos
 
+- OpenAI pela API
+- Comunidade open source pelas bibliotecas utilizadas
+- Contribuidores do projeto
+
+---
+
+## Changelog
+
+### v1.0.0 (2024-03-10)
+- Suporte inicial a PDF, TXT, CSV, Excel, Imagens
+- RAG com chunks e busca por keywords
+- Memória persistente
+- Execução de comandos shell
+
+### v1.1.0 (2024-03-10)
+- Suporte a HTML com BeautifulSoup
+- Diagnóstico de documentos
+- Melhorias na extração de PDF com pdfplumber
+- Instalação automatizada com setup.sh
+- Correção de permissões e paths
+
+---
 
 **Nota**: Este assistente foi projetado para ambientes Linux/Unix. Adaptações podem ser necessárias para outros sistemas operacionais.
+EOF
