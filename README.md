@@ -1,4 +1,3 @@
-cat > /home/wagton.oliveira/iashell/README.md << 'EOF'
 # IA Local Assistente Técnico
 
 Assistente de linha de comando com memória persistente, RAG local e execução de shell, projetado para operar diretamente no terminal.
