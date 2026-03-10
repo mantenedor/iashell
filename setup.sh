@@ -147,6 +147,43 @@ install_pip() {
     return 0
 }
 
+# Função para instalar git automaticamente
+install_git() {
+    echo -e "  ⚠️  Git não encontrado. Tentando instalar automaticamente..."
+    
+    if command -v dnf &> /dev/null; then
+        echo "  📦 Detectado dnf (Fedora/RHEL/CentOS)"
+        sudo dnf install git -y
+    elif command -v apt &> /dev/null; then
+        echo "  📦 Detectado apt (Debian/Ubuntu)"
+        sudo apt update && sudo apt install git -y
+    elif command -v yum &> /dev/null; then
+        echo "  📦 Detectado yum (CentOS/RHEL)"
+        sudo yum install git -y
+    elif command -v pacman &> /dev/null; then
+        echo "  📦 Detectado pacman (Arch)"
+        sudo pacman -S git --noconfirm
+    elif command -v zypper &> /dev/null; then
+        echo "  📦 Detectado zypper (OpenSUSE)"
+        sudo zypper install git -y
+    else
+        echo -e "${RED}❌ Não foi possível detectar o gerenciador de pacotes.${NC}"
+        echo -e "   Instale o git manualmente com um dos comandos:"
+        echo -e "   • Red Hat/CentOS/Fedora: sudo dnf install git"
+        echo -e "   • Debian/Ubuntu: sudo apt install git"
+        echo -e "   • Arch Linux: sudo pacman -S git"
+        return 1
+    fi
+    
+    if ! command -v git &> /dev/null; then
+        echo -e "${RED}❌ Falha na instalação do git. Instale manualmente.${NC}"
+        return 1
+    fi
+    
+    echo -e "  ✅ Git instalado com sucesso: $(git --version)"
+    return 0
+}
+
 # Função de instalação
 install() {
     echo -e "${GREEN}╔════════════════════════════════════════════╗${NC}"
@@ -172,11 +209,14 @@ install() {
         echo -e "  ✅ Pip3 encontrado"
     fi
     
+    # Verificar/Instalar git
     if ! command -v git &> /dev/null; then
-        echo -e "${RED}❌ Git não encontrado. Instale o git primeiro.${NC}"
-        exit 1
+        if ! install_git; then
+            exit 1
+        fi
+    else
+        echo -e "  ✅ Git encontrado: $(git --version)"
     fi
-    echo -e "  ✅ Git encontrado: $(git --version)"
 
     # 2. Clonar repositório
     echo -e "${BLUE}[2/8]${NC} Clonando repositório..."
