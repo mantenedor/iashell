@@ -112,7 +112,6 @@ EOF
 install_pip() {
     echo -e "  ⚠️  Pip3 não encontrado. Tentando instalar automaticamente..."
     
-    # Detecta o gerenciador de pacotes e instala
     if command -v dnf &> /dev/null; then
         echo "  📦 Detectado dnf (Fedora/RHEL/CentOS)"
         sudo dnf install python3-pip -y
@@ -137,7 +136,6 @@ install_pip() {
         return 1
     fi
     
-    # Verifica se a instalação foi bem-sucedida
     if ! command -v $PIP_CMD &> /dev/null; then
         echo -e "${RED}❌ Falha na instalação do pip. Instale manualmente.${NC}"
         return 1
@@ -200,7 +198,6 @@ install() {
     fi
     echo -e "  ✅ Python3 encontrado: $($PYTHON_CMD --version)"
     
-    # Verificar/Instalar pip
     if ! command -v $PIP_CMD &> /dev/null; then
         if ! install_pip; then
             exit 1
@@ -209,7 +206,6 @@ install() {
         echo -e "  ✅ Pip3 encontrado"
     fi
     
-    # Verificar/Instalar git
     if ! command -v git &> /dev/null; then
         if ! install_git; then
             exit 1
@@ -254,7 +250,7 @@ install() {
     chmod 755 *.py *.sh
     echo -e "  ✅ Permissões configuradas (755/644)"
 
-    # 6. Criar arquivo .env.example (sempre versionado)
+    # 6. Criar arquivo .env.example
     echo -e "${BLUE}[6/8]${NC} Criando arquivo de exemplo..."
     if [ ! -f ".env.example" ]; then
         create_env_example
@@ -263,7 +259,7 @@ install() {
         echo -e "  ✅ Arquivo .env.example já existe"
     fi
 
-    # 7. Configurar arquivo .env (NUNCA versionado)
+    # 7. Configurar arquivo .env
     echo -e "${BLUE}[7/8]${NC} Configurando ambiente local..."
     
     if [ ! -f ".env" ]; then
@@ -273,8 +269,15 @@ install() {
         echo -e "  ✅ Arquivo .env já existe"
     fi
 
-    # 8. Configurar alias
+    # 8. Configurar alias (CORRIGIDO)
     echo -e "${BLUE}[8/8]${NC} Configurando alias 'ia'..."
+    
+    # Remove alias antigo se existir (qualquer caminho)
+    sed -i '/alias ia=.*iashell\/run-prompt.sh/d' "$HOME/.bashrc" 2>/dev/null || true
+    sed -i '/alias ia=.*iashell\/run-prompt.sh/d' "$HOME/.zshrc" 2>/dev/null || true
+    sed -i '/alias ia=.*iashell\/run-prompt.sh/d' "$HOME/.bash_profile" 2>/dev/null || true
+    
+    # Adiciona novo alias
     ALIAS_COMMAND="alias ia='$INSTALL_DIR/run-prompt.sh'"
     
     # Verifica qual shell está sendo usado
@@ -285,14 +288,11 @@ install() {
         SHELL_CONFIG="$HOME/.bash_profile"
     fi
     
-    if ! grep -q "alias ia=" "$SHELL_CONFIG"; then
-        echo "$ALIAS_COMMAND" >> "$SHELL_CONFIG"
-        echo -e "  ✅ Alias adicionado ao $SHELL_CONFIG"
-    else
-        echo -e "  ⚠️  Alias 'ia' já existe em $SHELL_CONFIG"
-    fi
+    echo "$ALIAS_COMMAND" >> "$SHELL_CONFIG"
+    echo -e "  ✅ Alias adicionado ao $SHELL_CONFIG"
+    echo -e "  📍 Caminho: $INSTALL_DIR/run-prompt.sh"
 
-    # Concluído - com ênfase na configuração da chave
+    # Concluído
     echo ""
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║      INSTALAÇÃO CONCLUÍDA COM SUCESSO!                     ║${NC}"
@@ -319,17 +319,15 @@ install() {
     echo ""
     echo -e "${YELLOW}⚠️  ATENÇÃO: O arquivo .env contém sua chave secreta e${NC}"
     echo -e "${YELLOW}   NÃO deve ser versionado no git (já está no .gitignore).${NC}"
-    echo -e "${YELLOW}   O arquivo .env.example é seguro e pode ser versionado.${NC}"
 }
 
-# Função de destruição
+# Função de destruição (CORRIGIDA)
 destroy() {
     echo -e "${RED}╔════════════════════════════════════════════╗${NC}"
     echo -e "${RED}║      DESTRUINDO AMBIENTE...               ║${NC}"
     echo -e "${RED}╚════════════════════════════════════════════╝${NC}"
     echo ""
 
-    # Confirmar destruição
     echo -e "${YELLOW}⚠️  ATENÇÃO: Isso removerá permanentemente:${NC}"
     echo "  • Diretório $INSTALL_DIR"
     echo "  • Alias do shell"
@@ -341,23 +339,16 @@ destroy() {
         exit 0
     fi
 
-    # 1. Remover alias
+    # 1. Remover alias (CORRIGIDO - remove qualquer alias do ia)
     echo -e "${BLUE}[1/3]${NC} Removendo alias do shell..."
     
-    SHELL_CONFIG="$HOME/.bashrc"
-    if [ -n "$ZSH_VERSION" ]; then
-        SHELL_CONFIG="$HOME/.zshrc"
-    elif [ -f "$HOME/.bash_profile" ]; then
-        SHELL_CONFIG="$HOME/.bash_profile"
-    fi
-    
-    # Faz backup do arquivo antes de modificar
-    cp "$SHELL_CONFIG" "$SHELL_CONFIG.bak.$(date +%Y%m%d_%H%M%S)"
-    echo -e "  💾 Backup criado: $SHELL_CONFIG.bak.*"
-    
-    # Remove a linha do alias
-    sed -i '/alias ia=\/home\/.*\/iashell\/run-prompt.sh/d' "$SHELL_CONFIG"
-    echo -e "  ✅ Alias removido de $SHELL_CONFIG"
+    for config in "$HOME/.bashrc" "$HOME/.zshrc" "$HOME/.bash_profile"; do
+        if [ -f "$config" ]; then
+            cp "$config" "$config.bak.$(date +%Y%m%d_%H%M%S)" 2>/dev/null || true
+            sed -i '/alias ia=.*iashell\/run-prompt.sh/d' "$config" 2>/dev/null || true
+            echo -e "  ✅ Alias removido de $config"
+        fi
+    done
 
     # 2. Remover diretório de instalação
     echo -e "${BLUE}[2/3]${NC} Removendo diretório de instalação..."
@@ -379,16 +370,15 @@ destroy() {
         echo -e "  ⚠️  Caches Python mantidos"
     fi
 
-    # Concluído
     echo ""
     echo -e "${RED}╔════════════════════════════════════════════╗${NC}"
     echo -e "${RED}║      AMBIENTE DESTRUÍDO COM SUCESSO!      ║${NC}"
     echo -e "${RED}╚════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${YELLOW}ℹ️  Recarregue seu shell: source $SHELL_CONFIG${NC}"
+    echo -e "${YELLOW}ℹ️  Recarregue seu shell: source ~/.bashrc${NC}"
 }
 
-# Main - processar argumentos
+# Main
 case "$1" in
     -i)
         install
