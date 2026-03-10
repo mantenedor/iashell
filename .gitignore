@@ -12,3 +12,4 @@ bkp/
 *.csv
 
 .prompt_history
+conf/.env
