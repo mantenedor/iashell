@@ -58,10 +58,9 @@ mkdir -p /data
 cd /data
 
 ## 2. Clonar repositório
-
-git clone <repo> ia
+---
+git clone https://github.com/mantenedor/iashell.git ia
 cd ia
-
 ---
 
 ## 3. Criar ambiente virtual
