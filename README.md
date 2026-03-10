@@ -1048,6 +1048,29 @@ Mantenedor - [@mantenedor](https://github.com/mantenedor)
 
 - Permissões corrigidas
 
+## Licença
+
+Este projeto está licenciado sob a **Creative Commons Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)**.
+
+### Você tem permissão para:
+
+- **Compartilhar** — copiar e redistribuir o material em qualquer suporte ou formato
+- **Adaptar** — remixar, transformar, e criar a partir do material
+
+### Sob as seguintes condições:
+
+- **Atribuição** — Você deve dar o crédito apropriado, prover um link para a licença e indicar se mudanças foram feitas.
+- **Não Comercial** — Você não pode usar o material para fins comerciais.
+
+### Restrições:
+
+- **Sem restrições adicionais** — Você não pode aplicar termos jurídicos ou medidas tecnológicas que restrinjam legalmente outros de fazerem algo que a licença permita.
+
+📄 [Veja a licença completa](LICENSE) para mais detalhes.
+
+---
+
+**Resumo**: Você pode usar, modificar e compartilhar este código livremente, desde que não seja para fins comerciais e que dê os devidos créditos ao autor original.
 
 
 ---
