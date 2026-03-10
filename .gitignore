@@ -1,15 +1,42 @@
+# Arquivos de ambiente
+.env
+.env.*
+!.env.example
+conf/.env
+
+# Python
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+.Python
 
-conf/.env
+# Diretórios de dados
+base/tmp/
+base/parsed/
+base/*.json
+base/*.jsonl
+base/profile/history.jsonl
+base/profile/.prompt_history
+base/knowledge/.raw/
+base/tmp/.raw/
 
-base/
-knowledge/
-bkp/
+# Logs
+*.log
+debug.log
 
-*.pdf
-*.xlsx
-*.csv
+# Backups
+*.bak
+*.backup
+ia-backup-*.tar.gz
 
-.prompt_history
-conf/.env
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sistema
+.DS_Store
+Thumbs.db
